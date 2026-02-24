@@ -48,7 +48,7 @@ public class BookRepository : IBookRepository
             // Inserir gêneros (enum PostgreSQL)
             var genreSql = """
             INSERT INTO genre (book_id, genre)
-            VALUES (@bookId, @genre);
+            VALUES (@bookId, @genre::book_genre);
         """;
 
             foreach (var genre in book.Genres)

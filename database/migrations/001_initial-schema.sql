@@ -72,7 +72,7 @@ CREATE TABLE genre (
     PRIMARY KEY (book_id, genre),
 
     CONSTRAINT fk_genre_book
-        FOREIGN KEY (book_id, genre),
+        FOREIGN KEY (book_id)
         REFERENCES books(isbn)
 );
 

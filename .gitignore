@@ -1,0 +1,18 @@
+
+bin/
+obj/
+
+# Rider / VS Code / VS
+.vs/
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# User files
+*.user
+*.suo
+
+# Environment configs
+appsettings.Development.json

@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: biblioteca_db
       POSTGRES_USER: usuario
-      POSTGRES_PASSWORD: senha
+      POSTGRES_PASSWORD: ...
 
     ports:
       - "5432:5432"
