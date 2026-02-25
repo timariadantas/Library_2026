@@ -14,20 +14,21 @@ public class LoanRepository : ILoanRepository
     }
 
     public bool ExistsActiveLoan(string isbn)
-    {
-        using var conn = _connectionFactory.CreateConnection();
-        conn.Open();
+{
+    using var conn = _connectionFactory.CreateConnection();
+    conn.Open();
 
-        var sql = """
-            SELECT 1
-            FROM loans
-            WHERE isbn = @isbn
-            AND returned_at IS NULL;
-        """;
+    var sql = """
+        SELECT 1
+        FROM loan l
+        JOIN portfolio p ON p.id = l.portfolio_id
+        WHERE p.book_id = @isbn
+        AND l.return_at IS NULL;
+    """;
 
-        using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("isbn", isbn);
+    using var cmd = new NpgsqlCommand(sql, conn);
+    cmd.Parameters.AddWithValue("isbn", isbn);
 
-        return cmd.ExecuteScalar() != null;
-    }
+    return cmd.ExecuteScalar() != null;
+}
 }

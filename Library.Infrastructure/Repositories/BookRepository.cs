@@ -199,7 +199,7 @@ public class BookRepository : IBookRepository
             // novos gêneros
             var insertGenreSql = """
             INSERT INTO genre (book_id, genre)
-            VALUES (@bookId, @genre);
+            VALUES (@bookId, @genre::book_genre);
         """;
 
             foreach (var genre in book.Genres)
@@ -235,12 +235,12 @@ public class BookRepository : IBookRepository
         {
             //  Remover gêneros primeiro (FK)
             var deleteGenresSql = """
-            DELETE FROM book_genres
-            WHERE isbn = @isbn;
+            DELETE FROM genre
+            WHERE book_id = @book_id;
         """;
 
             using var deleteGenresCmd = new NpgsqlCommand(deleteGenresSql, conn, transaction);
-            deleteGenresCmd.Parameters.AddWithValue("isbn", isbn);
+            deleteGenresCmd.Parameters.AddWithValue("book_id", isbn);
             deleteGenresCmd.ExecuteNonQuery();
 
             // Remover livro
@@ -262,99 +262,113 @@ public class BookRepository : IBookRepository
         }
     }
 
-    public IEnumerable<Book> All
-    {
-        get
-        {
-            var books = new List<Book>();
+   public IEnumerable<Book> GetAll()
+{
+    var books = new List<Book>();
 
-            using var conn = _connectionFactory.CreateConnection();
-            conn.Open();
+    using var conn = _connectionFactory.CreateConnection();
+    conn.Open();
 
-            var sql = """
+    var bookSql = """
         SELECT isbn, title, release_year, summary, author, page_len, publisher
         FROM books;
     """;
 
-            using var cmd = new NpgsqlCommand(sql, conn);
-            using var reader = cmd.ExecuteReader();
+    using var bookCmd = new NpgsqlCommand(bookSql, conn);
+    using var reader = bookCmd.ExecuteReader();
 
-            while (reader.Read())
-            {
-                var isbn = reader.GetString(reader.GetOrdinal("isbn"));
-                var title = reader.GetString(reader.GetOrdinal("title"));
-                var releaseYear = reader.GetInt32(reader.GetOrdinal("release_year"));
-                var author = reader.GetString(reader.GetOrdinal("author"));
+    var bookData = new List<(string isbn, string title, int releaseYear, string author, string? summary, int? pageLen, string? publisher)>();
 
-                var summary = reader.IsDBNull(reader.GetOrdinal("summary"))
-                    ? null
-                    : reader.GetString(reader.GetOrdinal("summary"));
+    while (reader.Read())
+    {
+        var isbn = reader.GetString(reader.GetOrdinal("isbn"));
+        var title = reader.GetString(reader.GetOrdinal("title"));
+        var releaseYear = reader.GetInt32(reader.GetOrdinal("release_year"));
+        var author = reader.GetString(reader.GetOrdinal("author"));
 
-                int? pageLength = reader.IsDBNull(reader.GetOrdinal("page_len"))
-                    ? null
-                    : reader.GetInt32(reader.GetOrdinal("page_len"));
+        var summary = reader.IsDBNull(reader.GetOrdinal("summary"))
+            ? null
+            : reader.GetString(reader.GetOrdinal("summary"));
 
-                var publisher = reader.IsDBNull(reader.GetOrdinal("publisher"))
-                    ? null
-                    : reader.GetString(reader.GetOrdinal("publisher"));
+        int? pageLen = reader.IsDBNull(reader.GetOrdinal("page_len"))
+            ? null
+            : reader.GetInt32(reader.GetOrdinal("page_len"));
 
-                reader.Close();
+        var publisher = reader.IsDBNull(reader.GetOrdinal("publisher"))
+            ? null
+            : reader.GetString(reader.GetOrdinal("publisher"));
 
-                // Buscar gêneros do livro
-                var genreSql = """
-            SELECT genre_id
-            FROM book_genres
-            WHERE isbn = @isbn;
+        bookData.Add((isbn, title, releaseYear, author, summary, pageLen, publisher));
+    }
+
+    reader.Close();
+
+    foreach (var data in bookData)
+    {
+        // 🔥 Buscar gêneros do livro
+        var genreSql = """
+            SELECT genre
+            FROM genre
+            WHERE book_id = @isbn;
         """;
 
-                using var genreCmd = new NpgsqlCommand(genreSql, conn);
-                genreCmd.Parameters.AddWithValue("isbn", isbn);
+        using var genreCmd = new NpgsqlCommand(genreSql, conn);
+        genreCmd.Parameters.AddWithValue("isbn", data.isbn);
 
-                using var genreReader = genreCmd.ExecuteReader();
+        using var genreReader = genreCmd.ExecuteReader();
 
-                var genres = new List<BookGenre>();
+        var genres = new List<BookGenre>();
 
-                while (genreReader.Read())
-                {
-                    var genreId = genreReader.GetInt32(0);
-                    genres.Add((BookGenre)genreId);
-                }
+        while (genreReader.Read())
+        {
+            var genreString = genreReader.GetString(0);
 
-                books.Add(new Book(
-                    isbn,
-                    title,
-                    releaseYear,
-                    author,
-                    genres,
-                    summary,
-                    pageLength,
-                    publisher
-                ));
-            }
+            var parsedGenre = Enum.Parse<BookGenre>(
+                genreString,
+                ignoreCase: true
+            );
 
-            return books;
+            genres.Add(parsedGenre);
         }
+
+        genreReader.Close();
+
+        books.Add(new Book(
+            data.isbn,
+            data.title,
+            data.releaseYear,
+            data.author,
+            genres, // preenchido
+            data.summary,
+            data.pageLen,
+            data.publisher
+        ));
     }
 
-    List<Book> IBookRepository.All => throw new NotImplementedException();
+    return books;
+}
+    
+
 
     // Verificar se existe 
-    public bool Exists(string isbn)
-    {
-        using var conn = _connectionFactory.CreateConnection();
-        conn.Open();
+    public bool ExistsActiveLoan(string isbn)
+{
+    using var conn = _connectionFactory.CreateConnection();
+    conn.Open();
 
-        var sql = """
+    var sql = """
         SELECT 1
-        FROM books
-        WHERE isbn = @isbn;
+        FROM loan l
+        JOIN portfolio p ON p.id = l.portfolio_id
+        WHERE p.book_id = @isbn
+        AND l.return_at IS NULL;
     """;
 
-        using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("isbn", isbn);
+    using var cmd = new NpgsqlCommand(sql, conn);
+    cmd.Parameters.AddWithValue("isbn", isbn);
 
-        return cmd.ExecuteScalar() != null;
-    }
+    return cmd.ExecuteScalar() != null;
+}
 
     // Buscar por autor
 
@@ -430,10 +444,6 @@ public class BookRepository : IBookRepository
         return books;
     }
 
-    public IEnumerable<Book> GetAll()
-    {
-        throw new NotImplementedException();
-    }
 }
 
 
