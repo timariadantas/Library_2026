@@ -1,5 +1,5 @@
-using Library.Domain.Repositories;
-using Npgsql;
+using Library.Infrastructure.Data;
+using Npgsql; // biblioteca que permite conectar no PostgreSQL usando .NET
 
 namespace Library.Infrastructure.Data;
 
@@ -20,4 +20,4 @@ public class NpgsqlConnectionFactory : IDbConnectionFactory
 
 // Abstração no domínio
 // Implementação na infra
-//Baixo acoplamento
+// Baixo acoplamento

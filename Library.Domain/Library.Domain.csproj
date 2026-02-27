@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Npgsql" Version="10.0.1" />
     <PackageReference Include="NUlid" Version="1.7.3" />
   </ItemGroup>
 
