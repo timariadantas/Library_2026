@@ -1,6 +1,11 @@
 using Library.Domain.Repositories;
 using Library.Domain.Interfaces;
 using Library.Domain.Entities;
+using Library.Application.DTO;
+using Library.Application.Exceptions;
+using Library.Application.Validators;
+using Library.Domain.Enums;
+
 
 namespace Library.Application.Services;
 
@@ -16,13 +21,44 @@ public class BookService : IBookService
 
     }
 
-    public void Create(Book book)
-    {
-        // Regra de negócio 
-        var existing = _repository.GetByIsbn(book.Isbn);
-        if (existing != null)
-            throw new Exception("Livro já cadastrado.");
+    public void Create(CreateBookRequest request)
+{
+    // Validar
+    var validator = new CreateBookRequestValidator();
+    var validationResult = validator.Validate(request);
 
+    if (!validationResult.IsValid)
+        throw new ValidationApplicationException(
+            string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))
+        );
+  // 2️⃣ Converter genres (string -> enum)
+    var genres = request.Genres
+        .Select(g => Enum.Parse<BookGenre>(g, ignoreCase: true))
+        .ToList();
+    // Regra de negócio
+    var existing = _repository.GetByIsbn(request.Isbn);
+    if (existing != null)
+        throw new ConflictException("Livro já cadastrado.");
+
+    // Criar entidade
+    var book = new Book(
+        request.Isbn,
+        request.Title,
+        request.ReleaseYear,
+        request.Author,
+        genres,
+        request.Summary,
+        request.PageLength,
+        request.Publisher
+        
+        
+    );
+
+    // 4️⃣ Salvar
+    _repository.Create(book);
+}
+ void IBookService.Create(Book book)
+    {
         _repository.Create(book);
     }
 
