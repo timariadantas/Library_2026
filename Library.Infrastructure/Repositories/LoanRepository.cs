@@ -1,5 +1,5 @@
 using Library.Domain.Interfaces;
-using Library.Domain.Repositories;
+using Library.Infrastructure.Data;
 using Npgsql;
 
 namespace Library.Infrastructure.Repositories;
