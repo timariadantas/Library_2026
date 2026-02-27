@@ -1,5 +1,6 @@
 using Library.Domain.Entities;
 using Library.Domain.Repositories;
+using Library.Infrastructure.Data;
 using Library.Domain.Enums;
 using Npgsql;
 using System.Data;
@@ -262,91 +263,84 @@ public class BookRepository : IBookRepository
         }
     }
 
-   public IEnumerable<Book> GetAll()
+  public IEnumerable<Book> GetAll()
 {
-    var books = new List<Book>();
-
     using var conn = _connectionFactory.CreateConnection();
     conn.Open();
 
-    var bookSql = """
-        SELECT isbn, title, release_year, summary, author, page_len, publisher
-        FROM books;
+    var sql = """
+        SELECT 
+            b.isbn,
+            b.title,
+            b.release_year,
+            b.summary,
+            b.author,
+            b.page_len,
+            b.publisher,
+            g.genre
+        FROM books b
+        LEFT JOIN genre g ON g.book_id = b.isbn
+        ORDER BY b.isbn;
     """;
 
-    using var bookCmd = new NpgsqlCommand(bookSql, conn);
-    using var reader = bookCmd.ExecuteReader();
+    using var cmd = new NpgsqlCommand(sql, conn);
+    using var reader = cmd.ExecuteReader();
 
-    var bookData = new List<(string isbn, string title, int releaseYear, string author, string? summary, int? pageLen, string? publisher)>();
+    var booksDictionary = new Dictionary<string, Book>();
 
     while (reader.Read())
     {
         var isbn = reader.GetString(reader.GetOrdinal("isbn"));
-        var title = reader.GetString(reader.GetOrdinal("title"));
-        var releaseYear = reader.GetInt32(reader.GetOrdinal("release_year"));
-        var author = reader.GetString(reader.GetOrdinal("author"));
 
-        var summary = reader.IsDBNull(reader.GetOrdinal("summary"))
-            ? null
-            : reader.GetString(reader.GetOrdinal("summary"));
-
-        int? pageLen = reader.IsDBNull(reader.GetOrdinal("page_len"))
-            ? null
-            : reader.GetInt32(reader.GetOrdinal("page_len"));
-
-        var publisher = reader.IsDBNull(reader.GetOrdinal("publisher"))
-            ? null
-            : reader.GetString(reader.GetOrdinal("publisher"));
-
-        bookData.Add((isbn, title, releaseYear, author, summary, pageLen, publisher));
-    }
-
-    reader.Close();
-
-    foreach (var data in bookData)
-    {
-        // 🔥 Buscar gêneros do livro
-        var genreSql = """
-            SELECT genre
-            FROM genre
-            WHERE book_id = @isbn;
-        """;
-
-        using var genreCmd = new NpgsqlCommand(genreSql, conn);
-        genreCmd.Parameters.AddWithValue("isbn", data.isbn);
-
-        using var genreReader = genreCmd.ExecuteReader();
-
-        var genres = new List<BookGenre>();
-
-        while (genreReader.Read())
+        // Se ainda não existe no dicionário, criar
+        if (!booksDictionary.TryGetValue(isbn, out var book))
         {
-            var genreString = genreReader.GetString(0);
+            var title = reader.GetString(reader.GetOrdinal("title"));
+            var releaseYear = reader.GetInt32(reader.GetOrdinal("release_year"));
+            var author = reader.GetString(reader.GetOrdinal("author"));
+            var summary = reader.IsDBNull(reader.GetOrdinal("summary"))
+                ? null
+                : reader.GetString(reader.GetOrdinal("summary"));
+
+            int? pageLen = reader.IsDBNull(reader.GetOrdinal("page_len"))
+                ? null
+                : reader.GetInt32(reader.GetOrdinal("page_len"));
+
+            var publisher = reader.IsDBNull(reader.GetOrdinal("publisher"))
+                ? null
+                : reader.GetString(reader.GetOrdinal("publisher"));
+
+            book = new Book(
+                isbn,
+                title,
+                releaseYear,
+                author,
+                new List<BookGenre>(), 
+                summary,
+                pageLen,
+                publisher
+            );
+
+            booksDictionary.Add(isbn, book);
+        }
+
+        // Adicionar gênero se existir
+        if (!reader.IsDBNull(reader.GetOrdinal("genre")))
+        {
+            var genreString = reader.GetString(reader.GetOrdinal("genre"));
 
             var parsedGenre = Enum.Parse<BookGenre>(
                 genreString,
                 ignoreCase: true
             );
 
-            genres.Add(parsedGenre);
+            book.Genres.Add(parsedGenre);
         }
-
-        genreReader.Close();
-
-        books.Add(new Book(
-            data.isbn,
-            data.title,
-            data.releaseYear,
-            data.author,
-            genres, // preenchido
-            data.summary,
-            data.pageLen,
-            data.publisher
-        ));
     }
 
-    return books;
+    return booksDictionary.Values;
 }
+
     
 
 
