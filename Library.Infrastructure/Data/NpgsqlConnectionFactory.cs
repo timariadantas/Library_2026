@@ -18,6 +18,5 @@ public class NpgsqlConnectionFactory : IDbConnectionFactory
     }
 }
 
-// Abstração no domínio
 // Implementação na infra
 // Baixo acoplamento
