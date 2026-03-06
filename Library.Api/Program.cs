@@ -1,13 +1,15 @@
 using FluentValidation;
 using Library.Application.Services;
 using Library.Domain.Repositories;
+using Library.Domain.Interfaces;
 using Library.Infrastructure.Repositories;
-using Microsoft.OpenApi.Models;
+using Library.Infrastructure.DependencyInjection;
 using Library.Application.Validators;
 using Library.API.Middlewares;
 using FluentValidation.AspNetCore;
-using Library.Infrastructure.Data;
-using Library.Domain.Interfaces;
+using Microsoft.OpenApi.Models;
+
+
 
 
 
@@ -26,31 +28,29 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Library API",
+        Title = "Library API ",
         Version = "v1",
-        Description = "API para gerenciamento de livros"
+        Description = "API para gerenciamento de livros da Maria Dantas"
     });
 });
 
 
-// Dependency Injection
-builder.Services.AddScoped<IDbConnectionFactory>(sp =>
-{
-    var configuration = sp.GetRequiredService<IConfiguration>();
-    var connectionString = configuration.GetConnectionString("DefaultConnection");
+// Infrastructure (Escolhe qual banco )
+builder.Services.AddInfrastructure(builder.Configuration);
 
-    return new NpgsqlConnectionFactory(connectionString!);
-});
 
-builder.Services.AddScoped<IBookRepository, BookRepository>();
-builder.Services.AddScoped<ILoanRepository, LoanRepository>();
-builder.Services.AddScoped <IBookService,BookService>();
+// Services
+
+builder.Services.AddScoped<IBookService, BookService>();
+
 
 // Build App
 var app = builder.Build();
 
+
 // Global Exception Middleware 
 app.UseMiddleware<GlobalExceptionMiddleware>();
+
 //Middleware
 if (app.Environment.IsDevelopment())
 {
