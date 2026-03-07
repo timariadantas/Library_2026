@@ -19,10 +19,12 @@ public static class DependencyInjection
         {
             case "Postgres":
                 services.AddScoped<IBookRepository, PostgresBookRepository>();
+                services.AddScoped<ILoanRepository, PostgresLoanRepository>();
                 break;
 
             case "Oracle":
                 services.AddScoped<IBookRepository, OracleBookRepository>();
+                services.AddScoped<ILoanRepository, OracleLoanRepository>();
                 break;
 
          

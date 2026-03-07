@@ -2,7 +2,6 @@ using FluentValidation;
 using Library.Application.Services;
 using Library.Domain.Repositories;
 using Library.Domain.Interfaces;
-using Library.Infrastructure.Repositories;
 using Library.Infrastructure.DependencyInjection;
 using Library.Application.Validators;
 using Library.API.Middlewares;
@@ -40,8 +39,11 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 
 // Services
+//builder.Services.AddScoped<ILoanRepository, PostgresLoanRepository>();
+//builder.Services.AddScoped<ILoanRepository, OracleLoanRepository>();
 
 builder.Services.AddScoped<IBookService, BookService>();
+builder.Services.AddScoped<ILoanService, LoanService>();
 
 
 // Build App

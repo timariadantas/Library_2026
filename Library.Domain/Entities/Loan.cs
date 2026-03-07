@@ -39,6 +39,27 @@ public class Loan
         LoanCondition = loanCondition;
     }
 
+     // Construtor para reconstruir do banco
+    public Loan(
+        Ulid id,
+        Ulid portfolioId,
+        Ulid userId,
+        DateTime startAt,
+        int period,
+        BookCondition loanCondition,
+        DateTime? returnAt = null,
+        BookCondition? returnCondition = null)
+    {
+        Id = id;
+        PortfolioId = portfolioId;
+        UserId = userId;
+        StartAt = startAt;
+        Period = period;
+        LoanCondition = loanCondition;
+        ReturnAt = returnAt;
+        ReturnCondition = returnCondition;
+    }
+
 
     private void Validate(Ulid portfolioId, Ulid userId, int period)
     {
@@ -80,3 +101,6 @@ public class Loan
         return StartAt.AddDays(Period);
     }
 }
+
+//O primeiro construtor é usado quando você cria um novo empréstimo (ulid novo + start_at = agora).
+//O segundo construtor é usado quando você lê do banco (reconstrução de dados).
