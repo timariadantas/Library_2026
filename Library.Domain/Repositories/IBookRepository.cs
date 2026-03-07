@@ -12,5 +12,5 @@ public interface IBookRepository
   IEnumerable<Book> GetAll();
   bool ExistsActiveLoan(string isbn);
   IEnumerable<Book> GetByAuthor(string author);
-   //                                                                                        bool Exists(string isbn);
+   ///                                                                                    bool Exists(string isbn);
 }
